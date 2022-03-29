@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "author": "Uri Shaked",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": -97.33, "left": -46, "attrs": {} },
+    {
+      "type": "wokwi-ssd1306",
+      "id": "ssd1306",
+      "top": 216.81,
+      "left": 24.88,
+      "attrs": { "i2c-address": "0x3D" }
+    },
+    { "type": "wokwi-ky-040", "id": "encoder1", "top": -283.84, "left": -76.38, "attrs": {} }
+  ],
+  "connections": [
+    [ "uno:A4", "ssd1306:DATA", "blue", [ "v20", "*", "h0" ] ],
+    [ "uno:A5", "ssd1306:CLK", "purple", [ "v24", "*", "h0" ] ],
+    [ "encoder1:GND", "uno:GND.3", "black", [ "h0" ] ],
+    [ "encoder1:VCC", "uno:5V", "red", [ "h0" ] ],
+    [ "encoder1:CLK", "uno:2", "green", [ "h0" ] ],
+    [ "encoder1:DT", "uno:3", "green", [ "h0" ] ],
+    [ "encoder1:SW", "uno:4", "green", [ "h0" ] ],
+    [ "ssd1306:GND", "uno:GND.3", "black", [ "v0" ] ],
+    [ "ssd1306:VIN", "uno:5V", "red", [ "v0" ] ]
+  ],
+  "serialMonitor": { "display": "auto", "newline": "lf" }
+}
