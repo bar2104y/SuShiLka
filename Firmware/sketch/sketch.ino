@@ -9,6 +9,7 @@
 #include "interface.h"
 #include "controller.h"
 #include "temperature.h"
+#include "temperature_analog.h"
 
 #include <EncButton.h>
 #include <SPI.h>
