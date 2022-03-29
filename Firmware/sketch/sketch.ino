@@ -1,7 +1,7 @@
 /*
  * SU***KA
  * 2022
- * version 0.0.1
+ * version 0.0.2
 */
 
 
@@ -42,6 +42,11 @@
  */
 #define THERMISTOR_PIN A0
 
+/* Твердотельное реле (-)
+ *  D4
+ */
+#define RELE_PIN 2
+
 /**************** SETTINGS *********************/
 #define SERIAL_SPEED 9600 // Скорость последовательного порта
 
@@ -54,23 +59,30 @@
 
 
 //Термистор
+/*
 #define THERMISTORNOMINAL 10000
 #define TEMPERATURENOMINAL 25
 #define TERMIST_B 4300  
 #define SERIESRESISTOR 10000
 #define VIN 3.3
+*/
 
 
 /************ GLOBAL VARIABLES *****************/
 EncButton<EB_TICK, ENCODER_A, ENCODER_B, ENCODER_KEY> enc;  // Энкодер с кнопкой <A, B, KEY>
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 Interface* menu;
+Controller* releController;
+TemperatureAnalog* temperatureController;
 
-float temperature_analog;
+float temperature;
+
 
 
 // Функция установки
 void setup() {
+  pinMode(RELE_PIN, INPUT);
+  
   Serial.begin(SERIAL_SPEED); // Запуск последовательного порта
 
   // Если дисплей не запущен - программа не запускается (уходит в бесконечный цикл)
@@ -89,6 +101,8 @@ void setup() {
 
   // Создание экземпляра контроллера экрана
   menu = new Interface(&display);
+  temperatureController = new TemperatureAnalog(THERMISTOR_PIN);
+  releController = new Controller(&temperature, 0);
   menu->drawMainPage();   // Отрисовка главной страницы
 }
 
@@ -102,16 +116,10 @@ void loop() {
 
   // конструкция программного таймера на 800 мс
   static uint32_t tmr;
-  if (millis() - tmr >= 2000) {
+  if (millis() - tmr >= 500) {
+    temperature = temperatureController->getTemperature();
     tmr = millis();
-    Serial.println(getTempFromThermistor());
+
+    digitalWrite(RELE_PIN, releController->getSignal());
   }
-}
-
-float getTempFromThermistor()
-{
-  float voltage = analogRead(A0) * VIN / 1024.0;
-  float r1 = voltage / (VIN - voltage);
-
-  return 1./( 1./(TERMIST_B)*log(r1)+1./(25. + 273.) ) - 273;
 }

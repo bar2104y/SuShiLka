@@ -1,4 +1,4 @@
-Controller::Controller(int* a, int b)
+Controller::Controller(float* a, int b)
 {
   this->regulator = new GyverPID(0.1, 0.1, 0.1, 500);
   this->regulator->setDirection(NORMAL); // направление регулирования (NORMAL/REVERSE). ПО УМОЛЧАНИЮ СТОИТ NORMAL
@@ -15,7 +15,7 @@ Controller::~Controller()
   free(this->regulator);
 }
 
-int Controller::GetSignal()
+int Controller::getSignal()
 {
   return this->regulator->getResultTimer();
 }

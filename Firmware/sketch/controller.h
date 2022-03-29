@@ -4,16 +4,16 @@
 class Controller
 {
   public:
-  Controller(int* a, int b);
+  Controller(float* a, int b);
   ~Controller();
 
-  int GetSignal();
+  int getSignal();
   
   private:
   GyverPID* regulator;
 
   int target;
   int output;
-  int* input;
+  float* input;
   
 };
