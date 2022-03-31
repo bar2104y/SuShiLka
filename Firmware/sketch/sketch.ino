@@ -102,7 +102,7 @@ void setup() {
   // Создание экземпляра контроллера экрана
   menu = new Interface(&display);
   temperatureController = new TemperatureAnalog(THERMISTOR_PIN);
-  releController = new Controller(&temperature, 0);
+  releController = new Controller(&temperature, 30);
   menu->drawMainPage();   // Отрисовка главной страницы
 }
 
@@ -118,7 +118,17 @@ void loop() {
   static uint32_t tmr;
   if (millis() - tmr >= 500) {
     temperature = temperatureController->getTemperature();
+    releController->regulator->input = temperature;
     tmr = millis();
+
+    /*
+    Serial.print(releController->output);
+    
+    Serial.print("   |   ");
+    Serial.print(temperature);
+    Serial.print("   |  ");
+    Serial.println(releController->getSignal());
+    */
 
     digitalWrite(RELE_PIN, releController->getSignal());
   }

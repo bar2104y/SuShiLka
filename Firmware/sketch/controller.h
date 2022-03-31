@@ -8,12 +8,10 @@ class Controller
   ~Controller();
 
   int getSignal();
-  
+
   private:
   GyverPID* regulator;
-
   int target;
   int output;
   float* input;
-  
 };
