@@ -4,14 +4,24 @@
 class Controller
 {
   public:
-  Controller(float* a, int b);
+  Controller();
   ~Controller();
 
+  int getTarget();
+  float getInput();
   int getSignal();
+  
+  void setTarget(int t);
+  void setInput(float i);
+
+  void setProgram(int i);
+ 
+  
 
   private:
   GyverPID* regulator;
-  int target;
-  int output;
-  float* input;
+  int target, output;
+  float input;
+  unsigned long endTime;
+  
 };

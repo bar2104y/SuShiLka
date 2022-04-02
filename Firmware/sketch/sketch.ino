@@ -6,10 +6,10 @@
 
 
 /**************** LIBS ************************/
-#include "interface.h"
 #include "controller.h"
 #include "temperature.h"
 #include "temperature_analog.h"
+#include "interface.h"
 
 #include <EncButton.h>
 #include <SPI.h>
@@ -76,12 +76,14 @@ Controller* releController;
 TemperatureAnalog* temperatureController;
 
 float temperature;
+static uint32_t k=30;
 
 
 
 // Функция установки
 void setup() {
-  pinMode(RELE_PIN, INPUT);
+  pinMode(RELE_PIN, OUTPUT);
+  digitalWrite(RELE_PIN, 0);
   
   Serial.begin(SERIAL_SPEED); // Запуск последовательного порта
 
@@ -102,7 +104,7 @@ void setup() {
   // Создание экземпляра контроллера экрана
   menu = new Interface(&display);
   temperatureController = new TemperatureAnalog(THERMISTOR_PIN);
-  releController = new Controller(&temperature, 30);
+  releController = new Controller();
   menu->drawMainPage();   // Отрисовка главной страницы
 }
 
@@ -114,21 +116,37 @@ void loop() {
   if (enc.click()) menu->Click();   // Однократное нажание
   if (enc.held()) menu->Held();     // Удержание
 
+   
+
   // конструкция программного таймера на 800 мс
   static uint32_t tmr;
+  static uint32_t tmr2;
+
+  /*
+  if (millis() - tmr2 >= 1500) {
+    tmr2 = millis();
+    k = (k + 1)%35+10;
+    releController->setTarget(k);
+    
+  }
+  */
+    
   if (millis() - tmr >= 500) {
-    temperature = temperatureController->getTemperature();
-    releController->regulator->input = temperature;
     tmr = millis();
 
-    /*
-    Serial.print(releController->output);
     
-    Serial.print("   |   ");
-    Serial.print(temperature);
-    Serial.print("   |  ");
+    temperature = temperatureController->getTemperature();
+    releController->setInput(temperature);
+    menu->update();
+    
+    Serial.print("currently_temp ");
+
+    Serial.print(releController->getInput());
+    Serial.print(" target_type ");
+    Serial.print(releController->getTarget());
+    Serial.print(" signal ");
     Serial.println(releController->getSignal());
-    */
+    
 
     digitalWrite(RELE_PIN, releController->getSignal());
   }

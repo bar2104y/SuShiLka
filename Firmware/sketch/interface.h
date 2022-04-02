@@ -5,8 +5,11 @@
 class Interface
 {
   public:
-  Interface(Adafruit_SSD1306* d);
+  Interface(Adafruit_SSD1306* d/*, Controller* c*/);
   ~Interface();
+
+  float currently_temperature;
+  int target_temperature;
 
   void drawMainPage();
   void drawCursor();
@@ -14,6 +17,7 @@ class Interface
   void drawTime();
   void drawTemperature();
   void Show();
+  void update();
 
   void drawFirstLevel();
 
@@ -26,6 +30,7 @@ class Interface
   
   private:
   Adafruit_SSD1306* display;
+  Controller* controller;
   int cursor_pointer;
 
   void setStatesToNone();

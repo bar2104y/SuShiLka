@@ -1,5 +1,6 @@
-Interface::Interface(Adafruit_SSD1306* d){
+Interface::Interface(Adafruit_SSD1306* d/*, Controller* c*/){
     this->display = d;
+    //this->controller = c;
     this->cursor_pointer = 0;
 
     this->is_MainMenu = true;
@@ -15,20 +16,27 @@ Interface::~Interface(){ free(this->display); };
 --------------------------СТРАНИЦЫ МЕНЮ-------------------------
 --------------------------------------------------------------*/
 
-
 // Отрисовка главной страницы меню (с общей информацией)
 void Interface::drawMainPage()
 {
   // Очистка дисплея
   this->clearDisplay();
 
-  this->display->print("\n 32/35grad\n left 5min ");
+  this->display->print("\n  ");
+  this->display->print(int(releController->getInput()));
+  this->display->print("/");
+  this->display->print(releController->getTarget());
+  this->display->print("\n left 5_min ");
+
 
   this->Show();
 
-  this->setStatesToNone();
-  this->is_MainMenu = true;
-  this->cursor_pointer = 0;
+  if (!this->is_MainMenu)
+  {
+    this->setStatesToNone();
+    this->is_MainMenu = true;
+    this->cursor_pointer = 0;
+  }
   
 }
 
@@ -44,15 +52,19 @@ void Interface::drawFirstLevel()
           "  Time\n"
   );
   
-  // Отрисовка курсора
-  this->cursor_pointer = 0;
-  this->drawCursor();
-  // Отображение информации производится в drawCursor() неявным образом
-
+  
   
   // Установка состояния (текущего пункта меню)
-  this->setStatesToNone();
-  this->is_FirstLevel = true;
+  if (!this->is_FirstLevel)
+  {
+    this->setStatesToNone();
+    this->is_FirstLevel = true;
+    // Отрисовка курсора
+    this->cursor_pointer = 0;
+    this->drawCursor();
+    // Отображение информации производится в drawCursor() неявным образом
+
+  }
 
 }
 
@@ -65,15 +77,15 @@ void Interface::drawProgram()
           "  PETG\n"
           "  ABS\n"
   );
+  if (!this->is_Program)
+  {
+    this->cursor_pointer = 0;
+    this->setStatesToNone();
+    this->is_Program = true;
+  }
   
-  this->cursor_pointer = 0;
 
   this->drawCursor();
-  this->Show();
-
-  this->setStatesToNone();
-  this->is_Program = true;
-  this->cursor_pointer = 0;
 }
 
 // Выбор температуры
@@ -130,7 +142,6 @@ int Interface::Prev()
 {
   if (this->is_MainMenu == false)
   {
-    Serial.println("рисуй");
     this->cursor_pointer--;
     if (this->cursor_pointer < 0)
       this->cursor_pointer = 3; 
@@ -192,6 +203,7 @@ int Interface::Click()
         this->drawFirstLevel();
         break;
       default:
+        releController->setProgram(this->cursor_pointer);
         break;
     }
   }
@@ -242,6 +254,16 @@ void Interface::Show()
   this->display->display();
 }
 
+void Interface::update()
+{
+  if(this->is_MainMenu) this->drawMainPage();
+  else if(this->is_Program) this->drawProgram();
+  else if(this->is_Temperature) this->drawTemperature();
+  else if(this->is_Time) this->drawTime();
+  else if(this->is_FirstLevel) this->drawFirstLevel();
+}
+
+
 // Для дебага
 void Interface::PrintState()
 {
@@ -249,5 +271,3 @@ void Interface::PrintState()
   Serial.print(this->is_MainMenu);
   Serial.println(!this->is_MainMenu);
 }
-
-
