@@ -56,16 +56,8 @@
 #define OLED_RESET     -1   // Reset pin # (отключен: -1)
 #define SCREEN_ADDRESS 0x3C // Адрес экрана (0x3C или 0x3D), смотреть DATASHEET
 
-
-
-//Термистор
-/*
-#define THERMISTORNOMINAL 10000
-#define TEMPERATURENOMINAL 25
-#define TERMIST_B 4300  
-#define SERIESRESISTOR 10000
-#define VIN 3.3
-*/
+#define EB_BETTER_ENC       // Улучшенный алгоритм опроса энкодера. Добавит 16 байт SRAM при подключении библиотеки
+#define EB_HALFSTEP_ENC     // Полушаговый энкодер - опционально
 
 
 /************ GLOBAL VARIABLES *****************/
@@ -74,9 +66,6 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 Interface* menu;
 Controller* releController;
 TemperatureAnalog* temperatureController;
-
-float temperature;
-static uint32_t k=30;
 
 
 
@@ -120,34 +109,26 @@ void loop() {
 
   // конструкция программного таймера на 800 мс
   static uint32_t tmr;
-  static uint32_t tmr2;
 
-  /*
-  if (millis() - tmr2 >= 1500) {
-    tmr2 = millis();
-    k = (k + 1)%35+10;
-    releController->setTarget(k);
-    
-  }
-  */
-    
+  // Уменьшаем частоту проведения измеренийй и изменения управляющего сигнала
   if (millis() - tmr >= 500) {
     tmr = millis();
 
+    // Получаем текущую температуру
+    float temperature = temperatureController->getTemperature();
+    releController->setInput(temperature); // Устанавливаем текущую температуру
+    menu->update(); // обновляем информацию на экране
     
-    temperature = temperatureController->getTemperature();
-    releController->setInput(temperature);
-    menu->update();
-    
-    Serial.print("currently_temp ");
 
+    // Вывод данных в консоль (для плоттера)
+    Serial.print("currently_temp ");
     Serial.print(releController->getInput());
     Serial.print(" target_type ");
     Serial.print(releController->getTarget());
     Serial.print(" signal ");
     Serial.println(releController->getSignal());
     
-
+    // Устанавливаем управляющее воздействие
     digitalWrite(RELE_PIN, releController->getSignal());
   }
 }

@@ -4,12 +4,9 @@
 
 class Interface
 {
-  public:
-  Interface(Adafruit_SSD1306* d/*, Controller* c*/);
+public:
+  Interface(Adafruit_SSD1306* d);
   ~Interface();
-
-  float currently_temperature;
-  int target_temperature;
 
   void drawMainPage();
   void drawCursor();
@@ -27,19 +24,21 @@ class Interface
   int Held();
 
   void PrintState();
-  
-  private:
+
+private:
   Adafruit_SSD1306* display;
-  Controller* controller;
   int cursor_pointer;
 
   void setStatesToNone();
+  void clearDisplay();
 
   bool is_FirstLevel,
         is_MainMenu,
         is_Program,
         is_Temperature,
         is_Time;
-  void clearDisplay();
+
+  int t_temperature;
+  
 
 };

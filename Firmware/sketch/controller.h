@@ -3,7 +3,7 @@
 
 class Controller
 {
-  public:
+public:
   Controller();
   ~Controller();
 
@@ -18,7 +18,7 @@ class Controller
  
   
 
-  private:
+private:
   GyverPID* regulator;
   int target, output;
   float input;

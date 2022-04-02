@@ -1,17 +1,14 @@
-Interface::Interface(Adafruit_SSD1306* d/*, Controller* c*/){
+Interface::Interface(Adafruit_SSD1306* d){
     this->display = d;
-    //this->controller = c;
     this->cursor_pointer = 0;
 
+    this->setStatesToNone();
     this->is_MainMenu = true;
-    this->is_Program = false;
-    this->is_Temperature = false;
-    this->is_Time = false;
-    this->is_FirstLevel = false;
-    
-  };
+};
   
 Interface::~Interface(){ free(this->display); };
+
+
 /*--------------------------------------------------------------
 --------------------------СТРАНИЦЫ МЕНЮ-------------------------
 --------------------------------------------------------------*/
@@ -26,7 +23,7 @@ void Interface::drawMainPage()
   this->display->print(int(releController->getInput()));
   this->display->print("/");
   this->display->print(releController->getTarget());
-  this->display->print("\n left 5_min ");
+  this->display->print("\n left 5min ");
 
 
   this->Show();
@@ -53,7 +50,6 @@ void Interface::drawFirstLevel()
   );
   
   
-  
   // Установка состояния (текущего пункта меню)
   if (!this->is_FirstLevel)
   {
@@ -63,9 +59,7 @@ void Interface::drawFirstLevel()
     this->cursor_pointer = 0;
     this->drawCursor();
     // Отображение информации производится в drawCursor() неявным образом
-
   }
-
 }
 
 // Выбор программы
@@ -84,7 +78,6 @@ void Interface::drawProgram()
     this->is_Program = true;
   }
   
-
   this->drawCursor();
 }
 
@@ -92,15 +85,20 @@ void Interface::drawProgram()
 void Interface::drawTemperature()
 {
   this->clearDisplay();
-  this->display->print("TEMPERATURE");
+  this->display->print("TEMPERATURE\n");
   
-  this->cursor_pointer = 0;
+  if (!this->is_Temperature)
+  {
+    this->cursor_pointer = 0;
+    this->setStatesToNone();
+    this->is_Temperature = true;
+    this->t_temperature = 0;
+  }
+
+  this->display->setTextSize(3);
+  this->display->print(this->t_temperature);
 
   this->Show();
-
-  this->setStatesToNone();
-  this->is_Temperature = true;
-  this->cursor_pointer = 0;
 }
 
 
@@ -132,9 +130,8 @@ int Interface::Next()
       this->cursor_pointer = 0; 
     this->drawCursor();    
   }
-  return this->cursor_pointer;
-  
-  
+  return 0;
+
 }
 
 // Предыдущий пункт меню
@@ -147,7 +144,7 @@ int Interface::Prev()
       this->cursor_pointer = 3; 
     this->drawCursor();
   }
-  return this->cursor_pointer;
+  return 0;
 }
 
 // Обработчик длинного нажатия

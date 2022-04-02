@@ -14,22 +14,13 @@ Controller::~Controller()
 }
 
 // Конечная температура
-int Controller::getTarget()
-{
-  return this->target;
-}
+int Controller::getTarget() { return this->target; }
 
 // Текущая температура
-float Controller::getInput()
-{
-  return this->input;
-}
+float Controller::getInput(){ return this->input; }
 
 // Управляющий сигнал
-int Controller::getSignal()
-{
-  return this->regulator->getResultTimer();
-}
+int Controller::getSignal(){ return this->regulator->getResultTimer(); }
 
 // Установка конечной температуры
 void Controller::setTarget(int t)
