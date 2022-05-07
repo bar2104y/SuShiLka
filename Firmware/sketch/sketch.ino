@@ -1,21 +1,27 @@
 /*
  * SU***KA
  * 2022
- * version 0.0.2
+ * version 0.1.0
 */
 
+/**************** SETTINGS *********************/
+#define SERIAL_SPEED 9600 // Скорость последовательного порта
 
-/**************** LIBS ************************/
-#include "controller.h"
-#include "temperature.h"
-#include "temperature_analog.h"
-#include "interface.h"
+// Экран 
+#define SCREEN_WIDTH 128    // Ширина, пиксели
+#define SCREEN_HEIGHT 64    // Высота, пиксели
+#define OLED_RESET     -1   // Reset pin # (отключен: -1)
+#define SCREEN_ADDRESS 0x3C // Адрес экрана (0x3C или 0x3D), смотреть DATASHEET
+// 50 68
 
-#include <EncButton.h>
-#include <SPI.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#define EB_BETTER_ENC       // Улучшенный алгоритм опроса энкодера. Добавит 16 байт SRAM при подключении библиотеки
+#define EB_HALFSTEP_ENC     // Полушаговый энкодер - опционально
+
+#define MIN_TEMP 0
+#define MAX_TEMP 120
+
+//#define ENABLE_DAYS_IN_TIMER // Включить выбор дней при установке таймера
+
 
 
 /****************** PINS ***********************/
@@ -47,88 +53,90 @@
  */
 #define RELE_PIN 2
 
-/**************** SETTINGS *********************/
-#define SERIAL_SPEED 9600 // Скорость последовательного порта
+struct UserTime
+{
+  int d;
+  int h;
+  int m;
+  int s;
+};
 
-// Экран 
-#define SCREEN_WIDTH 128    // Ширина, пиксели
-#define SCREEN_HEIGHT 64    // Высота, пиксели
-#define OLED_RESET     -1   // Reset pin # (отключен: -1)
-#define SCREEN_ADDRESS 0x3C // Адрес экрана (0x3C или 0x3D), смотреть DATASHEET
+/**************** LIBS ************************/
 
-#define EB_BETTER_ENC       // Улучшенный алгоритм опроса энкодера. Добавит 16 байт SRAM при подключении библиотеки
-#define EB_HALFSTEP_ENC     // Полушаговый энкодер - опционально
+#include <EncButton.h>
+#include "GyverPID.h"
+#include "PIDtuner.h"
+#include <SPI.h>
+#include <Wire.h>
+#include "RTClib.h"
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+
+#include "view.h"
+#include "controller.h"
+
+
+
 
 
 /************ GLOBAL VARIABLES *****************/
 EncButton<EB_TICK, ENCODER_A, ENCODER_B, ENCODER_KEY> enc;  // Энкодер с кнопкой <A, B, KEY>
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-Interface* menu;
-Controller* releController;
-TemperatureAnalog* temperatureController;
+RTC_DS1307 rtc;
+
+Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Interface interface = Interface(&display);
+SushilkaController controller = SushilkaController();
+
 
 
 
 // Функция установки
 void setup() {
-  pinMode(RELE_PIN, OUTPUT);
-  digitalWrite(RELE_PIN, 0);
-  
-  Serial.begin(SERIAL_SPEED); // Запуск последовательного порта
+    Serial.begin(SERIAL_SPEED); // Запуск последовательного порта
+    
+    if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+        Serial.println(F("err"));
+        for(;;);
+    }
+    display.display();
+    delay(500);
+    // Запуск модуля реального времени 
+    if (! rtc.begin()) {
+      Serial.println("Couldn't find RTC");
+      while (1);
+    }
 
-  // Если дисплей не запущен - программа не запускается (уходит в бесконечный цикл)
-  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("Ошибка инициализации дисплея"));
-    for(;;);
-  }
+    // Если модуль не найден
+    if (! rtc.isrunning()) {
+      Serial.println("RTC is NOT running!");
+    }
+    // Установка текущей даты и времени
+    rtc.adjust(DateTime(__DATE__, __TIME__));
 
-  // Таймаут загрузки экрана
-  display.display();
-  delay(2000); // Pause for 2 seconds
+    //Serial.println("200");
 
-  // Отчистка экрана
-  display.clearDisplay();
-  display.display();
-
-  // Создание экземпляра контроллера экрана
-  menu = new Interface(&display);
-  temperatureController = new TemperatureAnalog(THERMISTOR_PIN);
-  releController = new Controller();
-  menu->drawMainPage();   // Отрисовка главной страницы
+    controller.set_timer_to(0,2,0);
 }
 
 void loop() {
-  enc.tick();                       // Проверка состояния энкодера
-
-  if (enc.left()) menu->Next();     // Поворот налево
-  if (enc.right()) menu->Prev();    // Поворот направо
-  if (enc.click()) menu->Click();   // Однократное нажание
-  if (enc.held()) menu->Held();     // Удержание
-
-   
-
-  // конструкция программного таймера на 800 мс
   static uint32_t tmr;
+    /* События
+    * *поворот налево
+    * *поворот направо
+    * *клик
+    * *ужержание
+    */
+  enc.tick();                       // Проверка состояния энкодера
+  if (enc.click())
+    controller.click();
+  if (enc.left()) controller.rotate(true);     // Поворот налево
+  if (enc.right()) controller.rotate(false);
+  if (enc.held()) controller.held();
 
-  // Уменьшаем частоту проведения измеренийй и изменения управляющего сигнала
-  if (millis() - tmr >= 500) {
+  if ( millis() - tmr >= 100) {
     tmr = millis();
-
-    // Получаем текущую температуру
-    float temperature = temperatureController->getTemperature();
-    releController->setInput(temperature); // Устанавливаем текущую температуру
-    menu->update(); // обновляем информацию на экране
-    
-
-    // Вывод данных в консоль (для плоттера)
-    Serial.print("currently_temp ");
-    Serial.print(releController->getInput());
-    Serial.print(" target_type ");
-    Serial.print(releController->getTarget());
-    Serial.print(" signal ");
-    Serial.println(releController->getSignal());
-    
-    // Устанавливаем управляющее воздействие
-    digitalWrite(RELE_PIN, releController->getSignal());
+    controller.tick();
   }
+  
 }

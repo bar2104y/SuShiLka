@@ -1,13 +1,12 @@
 /*
-* Родительский класс - обертка для удобной работы с различными датчиками температуры
+* Базовый класс - обертка для удобной работы с различными датчиками температуры
 * 
 */
 class Temperature
 {
   public:
-  Temperature();
-  ~Temperature();
+  Temperature(){};
+  ~Temperature(){};
 
-  virtual float getTemperature();
-  
+  virtual float getTemperature()=0;
 };

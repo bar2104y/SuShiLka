@@ -1,8 +1,0 @@
-Temperature::Temperature()
-{
-}
-
-Temperature::~Temperature()
-{
-}
-
