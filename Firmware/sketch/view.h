@@ -43,8 +43,6 @@ public:
                 "  Temp\n"
                 "  Time\n"
         );
-        //display->setCursor(0,0);
-        //display->fillRect(0, 0, 24, 64, SSD1306_BLACK);
       
         // Установка положения курсора, его отрисовка и отображение на дисплее
         display->setCursor(0, 16*selected_line);
@@ -56,11 +54,13 @@ public:
     void drawProgram(int selected_line)
     {
         clearDisplay();
-        display->print("  UP\n"
-                "  PLA\n"
-                "  PETG\n"
-                "  ABS\n"
-        );
+        display->print("  UP\n  ");
+        display->print(PROGRAM_1_TITLE);
+        display->print("\n  ");
+        display->print(PROGRAM_2_TITLE);
+        display->print("\n  ");
+        display->print(PROGRAM_3_TITLE);
+        
         display->setCursor(0, 16*selected_line);
         display->print(">");
         display->display();
@@ -71,7 +71,7 @@ public:
         clearDisplay();
         display->println("Set temp:\n");
         
-        display->print("     ");
+        display->print("    ");
         display->print(t_temp);
         display->println(" C");
 

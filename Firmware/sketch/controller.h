@@ -4,39 +4,45 @@
 
 #include "GyverPID.h"
 
+// Подключение глобальных переменных
 extern Interface interface;
 extern RTC_DS1307 rtc;
+
 
 class SushilkaController
 {
     public:
+        // Конструктор - инициализация параметров
         SushilkaController()
         {
-            TemperatureManager = new TemperatureAnalog(THERMISTOR_PIN);
-            emergency = false;
-            TimerON = false;
-            setStatesToNone();
-            is_MainMenu = true;
-            temperatureToSet=0;
-            stateString = "Hello, mr Yury";
-
-            // Таймер по умолчанию
-            timeToSet.d = 0;
-            timeToSet.h = 0;
+            stateString = START_MESSAGE;                                // Строка приветствия на главном экране
+            TemperatureManager = new TemperatureAnalog(THERMISTOR_PIN); // инициализация интерфейса для получения температуры
+            emergency = false;                                          // Сигнал об аварийной остановке
+            TimerON = false;                                            // Флаг включения таймера (нагрева)
+            setStatesToNone();                                          // Сброс информации о текущей странице интерфейса
+            is_MainMenu = true;                                         // Установка главной страницы интерфеса к выводу4
+            
+            temperatureToSet=0;                                         // Переменная для хранения выбранной температуры до ее установки
+            
+            timeToSet.d = 0;                                            // Переменная для хранения выбранного
+            timeToSet.h = 0;                                            // времени таймера до его установки
             timeToSet.m = 0;
             timeToSet.s = 0;
 
+            // Инициализация ПИД-регулятора
             PID = new GyverPID(10, 1.0, 1.0, 500);
             PID->setDirection(NORMAL); // направление регулирования (NORMAL/REVERSE). ПО УМОЛЧАНИЮ СТОИТ NORMAL
             PID->setLimits(0, 255);    // пределы (ставим для 8 битного ШИМ). ПО УМОЛЧАНИЮ СТОЯТ 0 И 255
             PID->setpoint = 0;
 
+            // Инициализация управляюшего вывода и его выключения
             pinMode(RELE_PIN, OUTPUT);
             digitalWrite(RELE_PIN, 0);
         }
-        ~SushilkaController(){}
+        ~SushilkaController(){} // Деструктор - на всякий пожарный
 
         // 0 - ok; 1- большая 2-маленькая
+        /*
         int set_curTemp(int t)
         {
             curTemp = t;
@@ -54,48 +60,64 @@ class SushilkaController
             targetTemp = t;
             return 0;
         }
+        */
 
-        void set_timer_to(int h, int m, int s)
+        // Установка таймера на h часов, m минут и s секунд
+        int set_timer_to(int d, int h, int m, int s, bool go_to_main = true )
         {
-          nowTime = rtc.now();
-          endTime = nowTime+TimeSpan(0,h,m,s);
-          return;
+            //Если таймер требуется на отрицательное время - выход с ошибкой
+            if ( h < 0 || m < 1 || s < 0 || d < 0 )
+                return 1;
+            nowTime = rtc.now();                  // Обновление текущего времени
+            endTime = nowTime+TimeSpan(d,h,m,s);  // Вычисление конечного времени
+            TimerON = true;                       // Включение таймера
+
+            // Логика выхода в главное меню (по требованию)
+            if (go_to_main)
+            {
+                setStatesToNone();
+                is_MainMenu = true;
+                stateString = "Timer was setted";
+            }
+            return 0;
         }
 
+
+        // Один тик работы контроллера
         void tick()
         {
-            // Чтение температуры
-            curTemp =int(TemperatureManager->getTemperature());
-            
-            // Чтение времени
-            nowTime = rtc.now();
+            static byte s; // Управляющий сиграл
+            curTemp =int(TemperatureManager->getTemperature());   // Чтение температуры
+            nowTime = rtc.now();                                  // Чтение времени
 
-            // Обработка таймера и выдача управляющего сигнала
-            if (nowTime.unixtime() >= endTime.unixtime())
+            if (nowTime.unixtime() >= endTime.unixtime())         // Обработка таймера и выдача управляющего сигнала
                 TimerON = false;
             
-            if ( TimerON )
+            if ( TimerON ) // Если включен таймер (нагрев)
             {
-                PID->setpoint = targetTemp;
-                PID->input = curTemp;
-                byte s = PID->getResultTimer();
+                PID->setpoint = targetTemp;                       // Установка целевой температуры
+                PID->input = curTemp;                             // Установка текущей температуры
+                s = PID->getResultTimer();                        // Получение управляющего сигнала
+                digitalWrite(RELE_PIN, s);                        // Вывод управляющего сигнала на реле
+            }
+            else // Если нагрев выключен
+            {
+                endTime = nowTime;
+                targetTemp = MIN_TEMP;
+                PID->setpoint = MIN_TEMP;                         // Установка целевой температуры в  минимальное значение
+                digitalWrite(RELE_PIN, 0);                        // Выключение реле
+            }
 
-                digitalWrite(RELE_PIN, s);
-
+            if (DRAW_INFO_TO_SERIAL_MONITOR)                      // Если включен вывод графиков - отправка данных в порт
+            {
                 Serial.print(targetTemp);
                 Serial.print(" ");
                 Serial.print(curTemp);
                 Serial.print(" ");
                 Serial.println(s);
             }
-            else
-            {
-                PID->setpoint = 0;
-                digitalWrite(RELE_PIN, 0);
-            }
 
-
-            // Отображение информации
+            // Отображение информации на основе установленного состояния
             if (is_MainMenu)
                 interface.drawMainPage(curTemp,targetTemp, endTime-nowTime, stateString);
             else if(is_FirsLevel)
@@ -108,118 +130,79 @@ class SushilkaController
                 interface.drawTime(CursorLine, timeToSet);
         }
 
+        // Обработка удержания
         void held()
         {
             if ( is_Time )
             {
-                endTime = nowTime + TimeSpan(timeToSet.d,timeToSet.h,timeToSet.m,timeToSet.s);
-                TimerON = true;
-                setStatesToNone();
-                is_MainMenu = true;
-                stateString = "Timer was setted";
-                interface.drawMainPage(curTemp,targetTemp, endTime-nowTime, stateString);
+                set_timer_to(timeToSet.d,timeToSet.h,timeToSet.m,timeToSet.s, true); // Включение таймера
+                //endTime = nowTime + TimeSpan(timeToSet.d,timeToSet.h,timeToSet.m,timeToSet.s);
+                //TimerON = true;
             }
             else
-            {
-                stateString = "ABORT";
-            }
+            EMERGENCY();
         }
 
+        // 
         void click()
         {
-            if (is_MainMenu)
-            {
-                CursorLine = 0;
-                setStatesToNone();
-                is_FirsLevel = true;
-                interface.drawFirstLevel(CursorLine);
-            }
-            else if (is_FirsLevel)
-            {
+            if (is_MainMenu)                             // Клик в главном меню - переход на первый уровень меню
+                openFirstLevel();
+            else if (is_FirsLevel)                       // Клик в первом уровне меню
                 switch (CursorLine)
                 {
-                    case 0:
-                        setStatesToNone();
-                        is_MainMenu = true;
-                        interface.drawMainPage(curTemp,targetTemp, endTime-nowTime, stateString);
-                        break;
+                    case 0: openMainMenu();     break;    // Открыть главную страницу
+                    case 1: openProgram();      break;    // Открыть выбор программ
+                    case 2: openTemperature();  break;    // Открыть настройку тмператур
+                    case 3: openTime();         break;    // Открыть настройку таймера
+                    default: break;
+                }
+            else if(is_Program)                           // Клик в выборе программ
+                switch (CursorLine)
+                {
+                    case 0: openFirstLevel();   break;    // Подняться вверх - первый уровень меню
+
+                    // Если определена программа 1
+                    #ifdef PROGRAM_1
                     case 1:
-                        CursorLine = 0;
-                        setStatesToNone();
-                        is_Program = true;
-                        interface.drawProgram(CursorLine);
+                        //PROGRAM 1
+                        targetTemp = PROGRAM_1_TEMP;
+                        set_timer_to(PROGRAM_1_TIME_D, PROGRAM_1_TIME_H, PROGRAM_1_TIME_M, PROGRAM_1_TIME_S);
+                        stateString = PROGRAM_1_TITLE;
+                        openMainMenu();
                         break;
+                    #endif
+                    
+                    // Если определена программа 2
+                    #ifdef PROGRAM_2
                     case 2:
-                        setStatesToNone();
-                        is_Temperature = true;
-                        temperatureToSet = 0;
-                        interface.drawTemperature(temperatureToSet);
+                        //PROGRAM 2
+                        targetTemp = PROGRAM_2_TEMP;
+                        set_timer_to(PROGRAM_2_TIME_D, PROGRAM_2_TIME_H, PROGRAM_2_TIME_M, PROGRAM_2_TIME_S);
+                        stateString = PROGRAM_2_TITLE;
+                        openMainMenu();
                         break;
+                    #endif
+
+                    // Если определена программа 3
+                    #ifdef PROGRAM_3
                     case 3:
-                        setStatesToNone();
-                        is_Time = true;
-                        CursorLine = 0;
-                        timeToSet.d = 0; timeToSet.h = 0; timeToSet.m = 0; timeToSet.s = 0;
-                        interface.drawTime(CursorLine, timeToSet);
+                        //PROGRAM 3
+                        targetTemp = PROGRAM_3_TEMP;
+                        set_timer_to(PROGRAM_3_TIME_D, PROGRAM_3_TIME_H, PROGRAM_3_TIME_M, PROGRAM_3_TIME_S);
+                        stateString = PROGRAM_3_TITLE;
+                        openMainMenu();
                         break;
+                    #endif
                     default:
                         break;
                 }
-            }
-            else if(is_Program)
-            {
-                switch (CursorLine)
-                {
-                      case 0:
-                          CursorLine = 0;
-                          setStatesToNone();
-                          is_FirsLevel = true;
-                          interface.drawFirstLevel(CursorLine);
-                          break;
-                      case 1:
-                          setStatesToNone();
-                          is_MainMenu = true;
-                          TimerON = true;
-                          //PLA
-                          targetTemp = 50;
-                          set_timer_to(3,30,0);
-                          stateString = "Start PLA";
-                          interface.drawMainPage(curTemp,targetTemp, endTime-nowTime, stateString);
-                          break;
-                      case 2:
-                          setStatesToNone();
-                          is_MainMenu = true;
-                          TimerON = true;
-                          //PETG
-                          targetTemp = 60;
-                          set_timer_to(3,30,0);
-                          stateString = "Start PETG";
-                          interface.drawMainPage(curTemp,targetTemp, endTime-nowTime, stateString);
-                          break;
-                      case 3:
-                          setStatesToNone();
-                          is_MainMenu = true;
-                          TimerON = true;
-                          //ABS
-                          targetTemp = 70;
-                          set_timer_to(4,0,0);
-                          stateString = "Start ABS";
-                          interface.drawMainPage(curTemp,targetTemp, endTime-nowTime, stateString);
-                          break;
-                      default:
-                          break;
-                }
-            }
-            else if (is_Temperature)
+            else if (is_Temperature)                            // Клик в установке температуры
             {
                 targetTemp = temperatureToSet;
-
-                setStatesToNone();
-                is_Time = true;
-                interface.drawTime(CursorLine, timeToSet);
-                
+                openTime();                
             }
-            else if (is_Time)
+            else if (is_Time)                                   // Клик в установке таймера
             {
                 #ifdef ENABLE_DAYS_IN_TIMER
                     #define LINES_IN_TIMER 3
@@ -228,13 +211,13 @@ class SushilkaController
                 #endif
                 CursorLine++;
                 if (CursorLine > LINES_IN_TIMER) CursorLine = 0;
-                
             }
         }
 
+        // Обработка поворотов энкодера
         void rotate(bool dir)
         {
-            if (is_Program || is_FirsLevel)
+            if (is_Program || is_FirsLevel)                 // Обработка на страницах с 4 пунктами меню
                 if (dir)
                 {
                     CursorLine++;
@@ -245,7 +228,7 @@ class SushilkaController
                     CursorLine--;
                     if (CursorLine < 0) CursorLine=0;
                 }
-            else if (is_Temperature)
+            else if (is_Temperature)                        // Обработка на странице установки температуры
                 if (dir)
                 {
                     temperatureToSet+=5;
@@ -258,7 +241,7 @@ class SushilkaController
                     if ( temperatureToSet < MIN_TEMP)
                         temperatureToSet = MIN_TEMP;
                 }
-            else if ( is_Time )
+            else if ( is_Time )                             // Обработка на странице установки времени
             {
                 int multiplicator = -1;
                 if (dir) multiplicator = 1;
@@ -350,6 +333,53 @@ class SushilkaController
       is_Time = false;
     }
 
+    void openMainMenu()
+    {
+        setStatesToNone();
+        is_MainMenu = true;
+    }
+
+    void openFirstLevel()
+    {
+        CursorLine = 0;
+        setStatesToNone();
+        is_FirsLevel = true;
+    }
+
+    void openProgram()
+    {
+        CursorLine = 0;
+        setStatesToNone();
+        is_Program = true;
+    }
+
+    void openTemperature()
+    {
+        setStatesToNone();
+        is_Temperature = true;
+        temperatureToSet = 0;
+    }
+
+    void openTime()
+    {
+        setStatesToNone();
+        is_Time = true;
+        CursorLine = 0;
+        timeToSet.d = 0; timeToSet.h = 0; timeToSet.m = 0; timeToSet.s = 0;
+    }
+    
+    void EMERGENCY()
+    {
+      digitalWrite(RELE_PIN, 0);
+      
+      targetTemp = MIN_TEMP;
+      PID->setpoint = MIN_TEMP;
+      endTime = nowTime;
+      TimerON = false;
+      emergency = true;
+      stateString = "!!!ERROR!!!STOP!!!";
+    }
+    
     protected:
     bool emergency, TimerON;
     int curTemp, targetTemp;
@@ -357,12 +387,12 @@ class SushilkaController
     String stateString;
     Temperature* TemperatureManager;
 
-    //Контроль уровней меню, курсора итд
-    bool is_MainMenu, is_FirsLevel, is_Program, is_Temperature, is_Time;
-    int CursorLine; // Указывает выбранную строку, для выбора температуры - выбранный радряд
+    
+    bool is_MainMenu, is_FirsLevel, is_Program, is_Temperature, is_Time;  //Контроль состояния уровней меню
+    int CursorLine;                                                       // Указывает выбранную строку, для выбора температуры - выбранный радряд
     int temperatureToSet;
     UserTime timeToSet;
 
-    // Управляющий сигнал
-    GyverPID* PID;
+    
+    GyverPID* PID;                                                        // PID-регулятор
 };
