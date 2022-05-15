@@ -3,6 +3,7 @@
 #include "temperature_a.h"
 
 #include "GyverPID.h"
+#include "PIDtuner.h"
 
 // Подключение глобальных переменных
 extern Interface interface;
@@ -30,10 +31,18 @@ class SushilkaController
             timeToSet.s = 0;
 
             // Инициализация ПИД-регулятора
-            PID = new GyverPID(10, 1.0, 1.0, 500);
+            KP = 10.0;
+            KI = 1.0;
+            KD = 1.0;
+            PID = new GyverPID(100, 0, 0, 500);
             PID->setDirection(NORMAL); // направление регулирования (NORMAL/REVERSE). ПО УМОЛЧАНИЮ СТОИТ NORMAL
             PID->setLimits(0, 255);    // пределы (ставим для 8 битного ШИМ). ПО УМОЛЧАНИЮ СТОЯТ 0 И 255
             PID->setpoint = 0;
+
+            // PID_tuner
+            PID_tuner = new PIDtuner();
+            PID_tuner->setParameters(NORMAL, 245, 10, 5000, 2 ,5000, 100);
+            TunerON = false;
 
             // Инициализация управляюшего вывода и его выключения
             pinMode(RELE_PIN, OUTPUT);
@@ -86,13 +95,24 @@ class SushilkaController
         // Один тик работы контроллера
         void tick()
         {
-            static byte s; // Управляющий сиграл
+            static byte s;
             curTemp =int(TemperatureManager->getTemperature());   // Чтение температуры
+
+            if (TunerON)
+            {
+              PID_tuner->setInput(curTemp);
+              PID_tuner->compute();
+              digitalWrite(RELE_PIN, PID_tuner->getOutput());
+
+              PID_tuner->debugPlot();
+              //PID_tuner->debugText();
+            }
+            
             nowTime = rtc.now();                                  // Чтение времени
 
             if (nowTime.unixtime() >= endTime.unixtime())         // Обработка таймера и выдача управляющего сигнала
                 TimerON = false;
-            
+
             if ( TimerON ) // Если включен таймер (нагрев)
             {
                 PID->setpoint = targetTemp;                       // Установка целевой температуры
@@ -120,8 +140,14 @@ class SushilkaController
             // Отображение информации на основе установленного состояния
             if (is_MainMenu)
                 interface.drawMainPage(curTemp,targetTemp, endTime-nowTime, stateString);
-            else if(is_FirsLevel)
+            else if (is_MainMenu2)
+                interface.drawMainMenu2(nowTime);
+            else if(is_PIDPage)
+                interface.drawPIDPage(KP,KI,KD, TunerON, PID_tuner->getAccuracy());
+            else if(is_FirstLevel)
                 interface.drawFirstLevel(CursorLine);
+            else if(is_FirstLevel2)
+                interface.drawFirstLevel2(CursorLine);
             else if(is_Program)
                 interface.drawProgram(CursorLine);
             else if(is_Temperature)
@@ -134,13 +160,11 @@ class SushilkaController
         void held()
         {
             if ( is_Time )
-            {
                 set_timer_to(timeToSet.d,timeToSet.h,timeToSet.m,timeToSet.s, true); // Включение таймера
-                //endTime = nowTime + TimeSpan(timeToSet.d,timeToSet.h,timeToSet.m,timeToSet.s);
-                //TimerON = true;
-            }
+            else if (is_FirstLevel2)
+                openMainMenu2();
             else
-            EMERGENCY();
+                EMERGENCY();
         }
 
         // 
@@ -148,7 +172,14 @@ class SushilkaController
         {
             if (is_MainMenu)                             // Клик в главном меню - переход на первый уровень меню
                 openFirstLevel();
-            else if (is_FirsLevel)                       // Клик в первом уровне меню
+            else if (is_MainMenu2)
+                openFirstLevel2();
+            else if (is_PIDPage)
+            {
+              TunerON = !TunerON;
+              openMainMenu(); 
+            }
+            else if (is_FirstLevel)                       // Клик в первом уровне меню
                 switch (CursorLine)
                 {
                     case 0: openMainMenu();     break;    // Открыть главную страницу
@@ -157,7 +188,13 @@ class SushilkaController
                     case 3: openTime();         break;    // Открыть настройку таймера
                     default: break;
                 }
-            else if(is_Program)                           // Клик в выборе программ
+            else if (is_FirstLevel2)
+                switch(CursorLine)
+                {
+                    case 0: openMainMenu2();    break;
+                    case 1: openPIDPage();      break;
+                }
+            else if(is_Program) // Клик в выборе программ
                 switch (CursorLine)
                 {
                     case 0: openFirstLevel();   break;    // Подняться вверх - первый уровень меню
@@ -196,7 +233,7 @@ class SushilkaController
                     #endif
                     default:
                         break;
-                }
+            }
             else if (is_Temperature)                            // Клик в установке температуры
             {
                 targetTemp = temperatureToSet;
@@ -217,7 +254,14 @@ class SushilkaController
         // Обработка поворотов энкодера
         void rotate(bool dir)
         {
-            if (is_Program || is_FirsLevel)                 // Обработка на страницах с 4 пунктами меню
+            
+            if (is_MainMenu)
+                openMainMenu2();
+            else  if (is_MainMenu2)
+                openMainMenu();
+            else
+            
+            if (is_Program || is_FirstLevel || is_FirstLevel2 )  // Обработка на страницах с 4 пунктами меню
                 if (dir)
                 {
                     CursorLine++;
@@ -228,7 +272,7 @@ class SushilkaController
                     CursorLine--;
                     if (CursorLine < 0) CursorLine=0;
                 }
-            else if (is_Temperature)                        // Обработка на странице установки температуры
+            else if (is_Temperature)                                // Обработка на странице установки температуры
                 if (dir)
                 {
                     temperatureToSet+=5;
@@ -322,15 +366,23 @@ class SushilkaController
             }
         }
 
+    /*
+    void debug()
+    {
+    }
+    */
 
     private:
     void setStatesToNone()
     {
       is_MainMenu = false;
-      is_FirsLevel = false;
+      is_FirstLevel = false;
       is_Program = false;
       is_Temperature = false;
       is_Time = false;
+      is_PIDPage = false;
+      is_FirstLevel2 = false;
+      is_MainMenu2 = false;
     }
 
     void openMainMenu()
@@ -339,11 +391,30 @@ class SushilkaController
         is_MainMenu = true;
     }
 
+    void openMainMenu2()
+    {
+        setStatesToNone();
+        is_MainMenu2 = true;
+    }
+
+    void openPIDPage()
+    {
+        setStatesToNone();
+        is_PIDPage = true;
+    }
+
     void openFirstLevel()
     {
         CursorLine = 0;
         setStatesToNone();
-        is_FirsLevel = true;
+        is_FirstLevel = true;
+    }
+
+    void openFirstLevel2()
+    {
+        CursorLine = 0;
+        setStatesToNone();
+        is_FirstLevel2 = true;
     }
 
     void openProgram()
@@ -379,20 +450,26 @@ class SushilkaController
       emergency = true;
       stateString = "!!!ERROR!!!STOP!!!";
     }
+
+    
     
     protected:
-    bool emergency, TimerON;
+    bool emergency, TimerON, TunerON;
     int curTemp, targetTemp;
+    //byte s; // Управляющий сиграл
     DateTime nowTime, endTime;
     String stateString;
     Temperature* TemperatureManager;
 
     
-    bool is_MainMenu, is_FirsLevel, is_Program, is_Temperature, is_Time;  //Контроль состояния уровней меню
+    bool is_MainMenu, is_FirstLevel, is_Program, is_Temperature, is_Time,
+         is_PIDPage, is_MainMenu2, is_FirstLevel2;                         //Контроль состояния уровней меню
     int CursorLine;                                                       // Указывает выбранную строку, для выбора температуры - выбранный радряд
     int temperatureToSet;
     UserTime timeToSet;
 
-    
+
+    float KP,KI,KD;
     GyverPID* PID;                                                        // PID-регулятор
+    PIDtuner* PID_tuner;                                                  // Автоматическая настройка PID
 };

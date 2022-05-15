@@ -104,6 +104,59 @@ public:
         display->display();
     }
 
+    void drawMainMenu2(DateTime time)
+    {
+        clearDisplay();
+        display->print("SETTINGS\n");
+
+        char buffer[20];
+        // ВРЕМЯ ДОБАВТЬ!!!
+        sprintf(buffer, "%02d.%02d.%02d\n  %02d:%02d:%02d", time.day(),time.month(),time.year(), time.hour(), time.minute(),time.second());
+
+        display->print(buffer);
+        display->display();
+    }
+
+    void drawFirstLevel2(int selected_line)
+    {
+        clearDisplay();
+        
+        display->print("  UP\n"
+                "  PID\n"
+                "  ###\n"
+                "  ###\n"
+        );
+
+        display->setCursor(0, 16*selected_line);
+        display->print(">");
+        display->display();
+    }
+
+
+    void drawPIDPage(float kp, float ki, float kd, bool flag=false, int accurancy=0)
+    {
+        clearDisplay();
+        if (flag)
+        {
+            display->print("Tune in progress:\n");
+            display->print(accurancy);
+            display->print("%\n Click to stop");
+        }
+        else
+        {
+            //display->println("PID:");
+            
+            display->print(" KP: ");
+            display->println(kp);
+            display->print(" KI: ");
+            display->println(ki);
+            display->print(" KD: ");
+            display->println(kd);
+            display->print("Click to tune");
+        }
+        display->display();
+    }
+
 
 
 private:

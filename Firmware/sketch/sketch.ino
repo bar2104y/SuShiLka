@@ -1,7 +1,7 @@
 /*
  * SU***KA
  * 2022
- * version 0.1.0
+ * version 0.1.2
 */
 
 /**************** SETTINGS *********************/
@@ -35,7 +35,7 @@
 #define PROGRAM_1_TIME_S 0
 
 #define PROGRAM_2
-#define PROGRAM_2_TITLE  "PROGRAM2"
+#define PROGRAM_2_TITLE  "PETG"
 #define PROGRAM_2_TEMP   60
 #define PROGRAM_2_TIME_D 0
 #define PROGRAM_2_TIME_H 3
@@ -43,8 +43,8 @@
 #define PROGRAM_2_TIME_S 0
 
 #define PROGRAM_3
-#define PROGRAM_3_TITLE  "PROGRAM3"
-#define PROGRAM_3_TEMP   70
+#define PROGRAM_3_TITLE  "ABS"
+#define PROGRAM_3_TEMP   80
 #define PROGRAM_3_TIME_D 0
 #define PROGRAM_3_TIME_H 4
 #define PROGRAM_3_TIME_M 0
@@ -62,7 +62,7 @@
  #define ENCODER_B 14
  #define ENCODER_KEY 0
 
- /* Display oled 128x64
+ /* Display oled 128x64 and RTC I2C DS1307 module
   *  GND | GND
   *  VCC | VCC
   *  SCL | D1
@@ -138,7 +138,8 @@ void setup() {
 
 // Цикл программы - аналог for (;;) - бесконечного цикла
 void loop() {
-    static uint32_t tmr;// Переменная для хранения времени
+    static uint32_t tmr;                          // Переменная для хранения времени
+    static uint32_t tmr2;
   
     enc.tick();                                   // Проверка состояния энкодера
     if (enc.click()) controller.click();          // Событие при клике
@@ -147,8 +148,9 @@ void loop() {
     if (enc.held())  controller.held();           // Событие при удержании
 
     // Запуск действий по таймеру
-    if ( millis() - tmr >= 100) {
+    if ( millis() - tmr >= 50) {
         tmr = millis();
         controller.tick();
     }
+
 }
