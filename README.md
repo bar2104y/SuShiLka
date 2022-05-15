@@ -29,8 +29,37 @@ coming soon....
 ***
 
 ## Основные настройки
-coming soon....
+`#define SERIAL_SPEED 9600` - Скорость UART
 
+`#define DRAW_INFO_TO_SERIAL_MONITOR true` - Вывод графика температуры в UART порт `true` или `false`
+
+Настройки программ сушки:
+```
+#define PROGRAM_1
+#define PROGRAM_1_TITLE  "PLA"   // Название
+#define PROGRAM_1_TEMP   50      // Температура
+#define PROGRAM_1_TIME_D 0       // Время в днях
+#define PROGRAM_1_TIME_H 3       // Время в часах
+#define PROGRAM_1_TIME_M 0       // Время в минутах
+#define PROGRAM_1_TIME_S 0       // Время в секундах
+```
+
+Доступно 3 программы:
+```
+#define PROGRAM_1
+#define PROGRAM_2
+#define PROGRAM_3
+```
+
+***
+
+## Ближайшее развитие
+* Перенос надроек в EEPROM
+* Создание версии под другие датчики реального времени или для варианта без модулей реального времени (сейчас не восстановления после отключения, см пункт выше)
+* Починка и настройка калибровки PID-регулятора
+* Добавление управления через GCode
+* Создание WEB-интерфейса
+* Поиск багов
 
 
 ***
