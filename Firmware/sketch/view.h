@@ -47,7 +47,7 @@ public:
         display->display();
     }
 
-    // Первый(основной) уровень меню
+    // Первый(основной) уровень меню (страница задания параметров)
     void drawFirstLevel(int selected_line)
     {
         // Очистка дисплея, установка размера шрифта, цвета
@@ -82,6 +82,7 @@ public:
         display->display();
     }
 
+    // Меню настройки температуры
     void drawTemperature(int t_temp)
     {
         clearDisplay();
@@ -94,6 +95,7 @@ public:
         display->display();
     }
 
+    // Меню настройки  таймера
     void drawTime(int line, UserTime time)
     {
         clearDisplay();
@@ -120,6 +122,7 @@ public:
         display->display();
     }
 
+    // Вторая страница главного  меню
     void drawMainMenu2(DateTime time)
     {
         clearDisplay();
@@ -133,6 +136,7 @@ public:
         display->display();
     }
 
+    // Первый(основной) уровень меню (страница настроек)
     void drawFirstLevel2(int selected_line)
     {
         clearDisplay();
@@ -148,7 +152,7 @@ public:
         display->display();
     }
 
-
+    // Страница настройки параметров PID
     void drawPIDPage(float kp, float ki, float kd, bool flag=false, int accurancy=0)
     {
         clearDisplay();
@@ -172,8 +176,6 @@ public:
         }
         display->display();
     }
-
-
 
 private:
     Adafruit_SSD1306* display;

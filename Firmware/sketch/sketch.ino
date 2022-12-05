@@ -39,7 +39,7 @@ limitations under the License.
 
 //#define ENABLE_DAYS_IN_TIMER // Включить выбор дней при установке таймера (раскоментировать)
 #define START_MESSAGE "Hello, mr. Yury!"
-#define DRAW_INFO_TO_SERIAL_MONITOR true
+#define DRAW_INFO_TO_SERIAL_MONITOR false
 
 //Программы
 #define PROGRAM_1
@@ -47,8 +47,8 @@ limitations under the License.
 #define PROGRAM_1_TEMP   50
 #define PROGRAM_1_TIME_D 0
 #define PROGRAM_1_TIME_H 3
-#define PROGRAM_1_TIME_M 0
-#define PROGRAM_1_TIME_S 0
+#define PROGRAM_1_TIME_M 1
+#define PROGRAM_1_TIME_S 1
 
 #define PROGRAM_2
 #define PROGRAM_2_TITLE  "PETG"
@@ -102,17 +102,19 @@ struct UserTime{int d, h, m, s;};
 
 /**************** LIBS ************************/
 #include <EncButton.h>
-#include "GyverPID.h"
-#include "PIDtuner.h"
+//#include "GyverPID.h"
+//#include "PIDtuner.h"
 #include <SPI.h>
 #include <Wire.h>
 #include "RTClib.h"
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+
+
 #include "view.h"
 #include "controller.h"
-
+#include "GCodeParser.h"
 
 /************ GLOBAL VARIABLES *****************/
 EncButton<EB_TICK, ENCODER_A, ENCODER_B, ENCODER_KEY> enc;                                      // Энкодер с кнопкой <A, B, KEY>
@@ -121,10 +123,12 @@ RTC_DS1307 rtc;                                                                 
 Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);    // Дисплей
 Interface interface = Interface(&display);                                                      // Контроллер вывода на экран
 SushilkaController controller = SushilkaController();                                           // Главный контроллер
+ComandsParser parser = ComandsParser(&controller);
 
 
 // Функция установки выполняется при запске устройства
 void setup() {
+  
     Serial.begin(SERIAL_SPEED); // Запуск последовательного порта
 
     // Остановка программы при сбое в запуске экрана
@@ -162,6 +166,8 @@ void loop() {
     if (enc.left())  controller.rotate(true);     // Событие при повороте налево
     if (enc.right()) controller.rotate(false);    // Событие при повороте направо
     if (enc.held())  controller.held();           // Событие при удержании
+
+    parser.tick();
 
     // Запуск действий по таймеру
     if ( millis() - tmr >= 50) {

@@ -16,7 +16,7 @@ limitations under the License.
 
 #pragma once
 #include "RTClib.h"
-#include "temperature_a.h"
+#include "temperature_ntc.h"
 
 #include "GyverPID.h"
 #include "PIDtuner.h"
@@ -33,7 +33,7 @@ class SushilkaController
         SushilkaController()
         {
             stateString = START_MESSAGE;                                // Строка приветствия на главном экране
-            TemperatureManager = new TemperatureAnalog(THERMISTOR_PIN); // инициализация интерфейса для получения температуры
+            TemperatureManager = new TemperatureNTC(THERMISTOR_PIN); // инициализация интерфейса для получения температуры
             emergency = false;                                          // Сигнал об аварийной остановке
             TimerON = false;                                            // Флаг включения таймера (нагрева)
             setStatesToNone();                                          // Сброс информации о текущей странице интерфейса
@@ -50,7 +50,7 @@ class SushilkaController
             KP = 10.0;
             KI = 1.0;
             KD = 1.0;
-            PID = new GyverPID(100, 0, 0, 500);
+            PID = new GyverPID(100., 0., 0., 500);
             PID->setDirection(NORMAL); // направление регулирования (NORMAL/REVERSE). ПО УМОЛЧАНИЮ СТОИТ NORMAL
             PID->setLimits(0, 255);    // пределы (ставим для 8 битного ШИМ). ПО УМОЛЧАНИЮ СТОЯТ 0 И 255
             PID->setpoint = 0;
@@ -77,6 +77,7 @@ class SushilkaController
             
             return 0;
         }
+        */
 
         int set_targetTemp(int t)
         {
@@ -85,13 +86,13 @@ class SushilkaController
             targetTemp = t;
             return 0;
         }
-        */
+        
 
         // Установка таймера на h часов, m минут и s секунд
         int set_timer_to(int d, int h, int m, int s, bool go_to_main = true )
         {
             //Если таймер требуется на отрицательное время - выход с ошибкой
-            if ( h < 0 || m < 1 || s < 0 || d < 0 )
+            if ( h < 0 || m < 0 || s < 0 || d < 0 )
                 return 1;
             nowTime = rtc.now();                  // Обновление текущего времени
             endTime = nowTime+TimeSpan(d,h,m,s);  // Вычисление конечного времени
@@ -106,6 +107,7 @@ class SushilkaController
             }
             return 0;
         }
+        
 
 
         // Один тик работы контроллера
@@ -253,6 +255,7 @@ class SushilkaController
             else if (is_Temperature)                            // Клик в установке температуры
             {
                 targetTemp = temperatureToSet;
+                set_timer_to(0, 0, 5, 0);
                 openTime();                
             }
             else if (is_Time)                                   // Клик в установке таймера
