@@ -1,6 +1,8 @@
+#ifndef TEMPERATURE_H
+#define TEMPERATURE_H
+
 /*
 * Базовый класс - обертка для удобной работы с различными датчиками температуры
-* 
 */
 class Temperature
 {
@@ -10,3 +12,4 @@ class Temperature
 
   virtual float getTemperature()=0;
 };
+#endif

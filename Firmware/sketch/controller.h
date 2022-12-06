@@ -14,7 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+
+
 #pragma once
+#ifndef CONTROLLER_H
+#define CONTROLLER_H
+
 #include "RTClib.h"
 #include "temperature_ntc.h"
 
@@ -23,12 +28,18 @@ limitations under the License.
 
 // Подключение глобальных переменных
 extern Interface interface;
-extern RTC_DS1307 rtc;
-
+#ifdef USE_RTC
+    #ifdef USE_RTC_1307
+        extern RTC_DS1307 rtc;
+    #endif
+    #ifdef USE_RTC_1307
+        extern RTC_DS3231 rtc;
+    #endif
+#endif
 
 class SushilkaController
 {
-    public:
+public:
         // Конструктор - инициализация параметров
         SushilkaController()
         {
@@ -79,6 +90,7 @@ class SushilkaController
         }
         */
 
+        // Установка целевой температуры
         int set_targetTemp(int t)
         {
             if (targetTemp < MIN_TEMP) return 2;
@@ -87,14 +99,13 @@ class SushilkaController
             return 0;
         }
         
-
         // Установка таймера на h часов, m минут и s секунд
         int set_timer_to(int d, int h, int m, int s, bool go_to_main = true )
         {
             //Если таймер требуется на отрицательное время - выход с ошибкой
             if ( h < 0 || m < 0 || s < 0 || d < 0 )
                 return 1;
-            nowTime = rtc.now();                  // Обновление текущего времени
+            nowTime = NOWTIME;                  // Обновление текущего времени
             endTime = nowTime+TimeSpan(d,h,m,s);  // Вычисление конечного времени
             TimerON = true;                       // Включение таймера
 
@@ -107,8 +118,6 @@ class SushilkaController
             }
             return 0;
         }
-        
-
 
         // Один тик работы контроллера
         void tick()
@@ -126,7 +135,7 @@ class SushilkaController
               //PID_tuner->debugText();
             }
             
-            nowTime = rtc.now();                                  // Чтение времени
+            nowTime = NOWTIME;                                    // Чтение времени
 
             if (nowTime.unixtime() >= endTime.unixtime())         // Обработка таймера и выдача управляющего сигнала
                 TimerON = false;
@@ -185,7 +194,7 @@ class SushilkaController
                 EMERGENCY();
         }
 
-        // 
+        // Обработка клика
         void click()
         {
             if (is_MainMenu)                             // Клик в главном меню - переход на первый уровень меню
@@ -385,13 +394,7 @@ class SushilkaController
             }
         }
 
-    /*
-    void debug()
-    {
-    }
-    */
-
-    private:
+private:
     void setStatesToNone()
     {
       is_MainMenu = false;
@@ -472,7 +475,7 @@ class SushilkaController
 
     
     
-    protected:
+protected:
     bool emergency, TimerON, TunerON;
     int curTemp, targetTemp;
     //byte s; // Управляющий сиграл
@@ -492,3 +495,5 @@ class SushilkaController
     GyverPID* PID;                                                        // PID-регулятор
     PIDtuner* PID_tuner;                                                  // Автоматическая настройка PID
 };
+
+#endif

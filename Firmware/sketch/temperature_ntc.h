@@ -1,3 +1,7 @@
+#ifndef TEMPERATURE_NTC_H
+#define TEMPERATURE_NTC_H
+
+
 #pragma once
 #include "temperature.h"
 
@@ -7,30 +11,29 @@ public:
     TemperatureNTC(int pin)
     {
         thermistor_pin = pin;
-        #define B 3950 // B-коэффициент
-        #define SERIAL_R 10000 // сопротивление последовательного резистора, 10 кОм
-        #define THERMISTOR_R 100000 // номинальное сопротивления термистора, 100 кОм
-        #define NOMINAL_T 25 // номинальная температура (при которой TR = 100 кОм)
+        b_coeff = 3950;              // B-коэффициент
+        seriesresistor = 10000;      // сопротивление последовательного резистора, 10 кОм
+        thermistor_nominal = 100000; // номинальное сопротивления термистора, 100 кОм
+        temperature_nominal = 25;    // номинальная температура (при которой TR = 100 кОм)
     };
     ~TemperatureNTC();
 
     float getTemperature()
     {
         float tr = 1023.0 / analogRead( thermistor_pin ) - 1;
-        tr = SERIAL_R / tr;
+        tr = seriesresistor / tr;
 
         float steinhart;
-        steinhart = tr / THERMISTOR_R; // (R/Ro)
+        steinhart = tr / thermistor_nominal; // (R/Ro)
         steinhart = log(steinhart); // ln(R/Ro)
-        steinhart /= B; // 1/B * ln(R/Ro)
-        steinhart += 1.0 / (NOMINAL_T + 273.15); // + (1/To)
+        steinhart /= b_coeff; // 1/B * ln(R/Ro)
+        steinhart += 1.0 / (temperature_nominal + 273.15); // + (1/To)
         steinhart = 1.0 / steinhart; // Invert
         steinhart -= 273.15;
 
         return (steinhart);
-
-        
     };
+    
 private:
     int thermistor_pin,
     thermistor_nominal,
@@ -40,3 +43,5 @@ private:
     float vin;
 
 };
+
+#endif

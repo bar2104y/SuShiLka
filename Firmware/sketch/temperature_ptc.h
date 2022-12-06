@@ -1,11 +1,14 @@
+#ifdef TEMPERATURE_PTC_H
+#define TEMPERATURE_PTC_H
+
 #pragma once
 #include "temperature.h"
 
 
-class TemperatureAnalog: public Temperature
+class TemperaturePTC: public Temperature
 {
 public:
-    TemperatureAnalog(int pin)
+    TemperaturePTC(int pin)
     {
         thermistor_pin = pin;
         thermistor_nominal = 1000;
@@ -14,7 +17,7 @@ public:
         seriesresistor = 10000;
         vin = 3.3;
     };
-    ~TemperatureAnalog();
+    ~TemperaturePTC();
 
     float getTemperature()
     {
@@ -30,5 +33,6 @@ private:
     b_coeff,
     seriesresistor;
     float vin;
-
 };
+
+#endif

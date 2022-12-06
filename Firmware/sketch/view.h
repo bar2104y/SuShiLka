@@ -14,6 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+#ifndef SUSHILKA_VIEW_H
+#define SUSHILKA_VIEW_H
+
 #pragma once
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -105,10 +108,11 @@ public:
         
         
         #ifdef ENABLE_DAYS_IN_TIMER
+            sprintf(buffer, "  D  H  M\n %02d:%02d:%02d", time.h, time.m);
             sprintf(buffer, "%02d:", time.d);
             display->print(buffer);
         #endif
-        sprintf(buffer, "%02d:%02d:%02d", time.h, time.m, time.s);
+        sprintf(buffer, "   H  M\n   %02d:%02d", time.h, time.m);
         display->println(buffer);
 
         switch (line)
@@ -188,3 +192,4 @@ private:
         display->setTextSize(2);
     }
 };
+#endif

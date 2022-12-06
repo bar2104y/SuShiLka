@@ -23,12 +23,17 @@ limitations under the License.
 /**************** SETTINGS *********************/
 #define SERIAL_SPEED 9600 // Скорость последовательного порта
 
-// Экран 
-#define SCREEN_WIDTH 128    // Ширина, пиксели
-#define SCREEN_HEIGHT 64    // Высота, пиксели
-#define OLED_RESET     -1   // Reset pin # (отключен: -1)
-#define SCREEN_ADDRESS 0x3C // Адрес экрана (0x3C или 0x3D), смотреть DATASHEET
-// 50 68
+// Раскомментировать, если используется модуль реального времени
+//#define USE_RTC
+//#define USE_RTC_1307
+//#define USE_RTC_3231
+
+#ifdef USE_RTC
+  #define NOWTIME rtc.now()
+#else
+  #define NOWTIME uint32_t(millis() / 1000ul)
+#endif
+
 
 // Энкодер с кнопкой
 #define EB_BETTER_ENC       // Улучшенный алгоритм опроса энкодера. Добавит 16 байт SRAM при подключении библиотеки
@@ -84,6 +89,13 @@ limitations under the License.
   *  SCL | D1
   *  SDA | D2
   */
+// Настройки экрана
+#define SCREEN_WIDTH 128    // Ширина, пиксели
+#define SCREEN_HEIGHT 64    // Высота, пиксели
+#define OLED_RESET     -1   // Reset pin # (отключен: -1)
+#define SCREEN_ADDRESS 0x3C // Адрес экрана (0x3C или 0x3D), смотреть DATASHEET
+// 50 68
+
 
 /* Analog thermistor
  *  A0
@@ -101,14 +113,15 @@ struct UserTime{int d, h, m, s;};
 
 
 /**************** LIBS ************************/
-#include <EncButton.h>
-//#include "GyverPID.h"
-//#include "PIDtuner.h"
+#pragma once
+#include <EncButton.h>              // Для работы энкодера(крутилки)
+#include "GyverPID.h"               //
+#include "PIDtuner.h"               //
 #include <SPI.h>
-#include <Wire.h>
-#include "RTClib.h"
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <Wire.h>                   // Для работы дисплея
+#include <RTClib.h>                 // Для работы модуля реального времени
+#include <Adafruit_GFX.h>           // Для работы дисплея
+#include <Adafruit_SSD1306.h>       // Для работы дисплея
 
 
 
@@ -118,7 +131,16 @@ struct UserTime{int d, h, m, s;};
 
 /************ GLOBAL VARIABLES *****************/
 EncButton<EB_TICK, ENCODER_A, ENCODER_B, ENCODER_KEY> enc;                                      // Энкодер с кнопкой <A, B, KEY>
-RTC_DS1307 rtc;                                                                                 //Модуль реального времени
+
+#ifdef USE_RTC
+  #ifdef USE_RTC_1307
+    RTC_DS1307 rtc;                                                                             //Модуль реального времени
+  #endif
+  #ifdef USE_RTC_1307
+    RTC_DS3231 rtc;
+  #endif
+#endif
+
 
 Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);    // Дисплей
 Interface interface = Interface(&display);                                                      // Контроллер вывода на экран
@@ -140,26 +162,25 @@ void setup() {
     display.display();
     delay(500);
 
-    
-    // Запуск модуля реального времени, в случае незапуска - прекращение работы
-    if (! rtc.begin()) {
-      Serial.println("Couldn't find RTC");
-      while (1);
-    }
-    if (! rtc.isrunning()) {
-      Serial.println("RTC is NOT running!");
-    }
-    
-    // Установка текущей даты и времени при прошивке
-    rtc.adjust(DateTime(__DATE__, __TIME__));
-
-    //Serial.println("200");
+    #ifdef USE_RTC
+      // Запуск модуля реального времени, в случае незапуска - прекращение работы
+      if (! rtc.begin()) {
+        Serial.println("Couldn't find RTC");
+        while (1);
+      }
+      if (! rtc.isrunning())
+        Serial.println("RTC is NOT running!");
+      
+      // Установка текущей даты и времени при прошивке
+      rtc.adjust(DateTime(__DATE__, __TIME__));
+    #endif
 }
+
 
 // Цикл программы - аналог for (;;) - бесконечного цикла
 void loop() {
     static uint32_t tmr;                          // Переменная для хранения времени
-    static uint32_t tmr2;
+    //static uint32_t tmr2;
   
     enc.tick();                                   // Проверка состояния энкодера
     if (enc.click()) controller.click();          // Событие при клике
