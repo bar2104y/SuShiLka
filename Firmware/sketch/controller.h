@@ -61,14 +61,14 @@ public:
             KP = 10.0;
             KI = 1.0;
             KD = 1.0;
-            PID = new GyverPID(100., 0., 0., 500);
+            PID = new GyverPID(100., 0., 0.);
             PID->setDirection(NORMAL); // направление регулирования (NORMAL/REVERSE). ПО УМОЛЧАНИЮ СТОИТ NORMAL
             PID->setLimits(0, 255);    // пределы (ставим для 8 битного ШИМ). ПО УМОЛЧАНИЮ СТОЯТ 0 И 255
             PID->setpoint = 0;
 
             // PID_tuner
-            PID_tuner = new PIDtuner();
-            PID_tuner->setParameters(NORMAL, 245, 10, 5000, 2 ,5000, 100);
+            //PID_tuner = new PIDtuner();
+            //PID_tuner->setParameters(NORMAL, 245, 10, 5000, 2 ,5000, 100);
             TunerON = false;
 
             // Инициализация управляюшего вывода и его выключения
@@ -127,11 +127,11 @@ public:
 
             if (TunerON)
             {
-              PID_tuner->setInput(curTemp);
-              PID_tuner->compute();
-              digitalWrite(RELE_PIN, PID_tuner->getOutput());
+              //PID_tuner->setInput(curTemp);
+              //PID_tuner->compute();
+              //digitalWrite(RELE_PIN, PID_tuner->getOutput());
 
-              PID_tuner->debugPlot();
+              //PID_tuner->debugPlot();
               //PID_tuner->debugText();
             }
             

@@ -17,8 +17,10 @@ limitations under the License.
 /*
  * SU***KA
  * 2022
- * version 0.1.2
+ * version 0.2.0
 */
+#define VER "0.2.0"
+
 
 /**************** SETTINGS *********************/
 #define SERIAL_SPEED 9600 // Скорость последовательного порта
@@ -71,6 +73,11 @@ limitations under the License.
 #define PROGRAM_3_TIME_M 0
 #define PROGRAM_3_TIME_S 0
 
+
+#define WIFI_SELF_SSID "SUSHILKA"
+#define WIFI_SELF_PASS "11223344"
+
+
 /****************** PINS ***********************/
 /* Ecoder:
  *  CLK | D0
@@ -116,7 +123,7 @@ struct UserTime{int d, h, m, s;};
 #pragma once
 #include <EncButton.h>              // Для работы энкодера(крутилки)
 #include "GyverPID.h"               //
-#include "PIDtuner.h"               //
+//#include "PIDtuner.h"               //
 #include <SPI.h>
 #include <Wire.h>                   // Для работы дисплея
 #include <RTClib.h>                 // Для работы модуля реального времени
@@ -128,6 +135,7 @@ struct UserTime{int d, h, m, s;};
 #include "view.h"
 #include "controller.h"
 #include "GCodeParser.h"
+#include "WIFIManager.h"
 
 /************ GLOBAL VARIABLES *****************/
 EncButton<EB_TICK, ENCODER_A, ENCODER_B, ENCODER_KEY> enc;                                      // Энкодер с кнопкой <A, B, KEY>
@@ -146,6 +154,7 @@ Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, 
 Interface interface = Interface(&display);                                                      // Контроллер вывода на экран
 SushilkaController controller = SushilkaController();                                           // Главный контроллер
 ComandsParser parser = ComandsParser(&controller);
+WIFIManager wifi = WIFIManager();
 
 
 // Функция установки выполняется при запске устройства
